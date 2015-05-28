@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -O2 -pipe
 SOURCES=sudoku.c
-EXECUTABLE=sudoku
+EXECUTABLE=solver
 
 $(EXECUTABLE): $(SOURCES)
 	$(CC) -o $@ $^ $(CFLAGS)
