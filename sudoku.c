@@ -48,7 +48,6 @@ int main(int argc, char** argv) {
 
     printf("Board: \n");
     print_board();
-    printf("\n");
 
     init_possible_numbers();
 
@@ -77,9 +76,7 @@ int main(int argc, char** argv) {
         printf("Board is NOT valid.\n");
     }
 
-    printf("\n");
     print_board();
-    printf("\n");
 
     printf("Time taken: %.6f seconds\n", (afterTime - beforeTime));
     printf("Cleaning up...\n");
