@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -march=corei7-avx -O2 -pipe
+CFLAGS=-Wall -O2 -pipe
 SOURCES=sudoku.c
 EXECUTABLE=sudoku
 
