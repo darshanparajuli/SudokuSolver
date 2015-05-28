@@ -4,4 +4,4 @@ SOURCES=sudoku.c
 EXECUTABLE=sudoku
 
 $(EXECUTABLE): $(SOURCES)
-	gcc -o $@ $^ $(CFLAGS)
+	$(CC) -o $@ $^ $(CFLAGS)
