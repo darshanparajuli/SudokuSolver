@@ -18,18 +18,18 @@ int cube_size;
 struct timespec sleep_time;
 #endif
 
-void init_board();
-void parse_file(const char* path);
-void init_possible_numbers();
-void destroy_board();
-void destroy_possible_numbers();
-int is_num_valid(int num, int x, int y);
-void calculate_possible_numbers(int num, int x, int y);
-int solve(int x, int y);
-int is_board_valid();
-void print_possible_numbers(int x, int y);
-void print_possible_numbers_all();
-void print_board();
+void init_board(void);
+void parse_file(const char*);
+void init_possible_numbers(void);
+void destroy_board(void);
+void destroy_possible_numbers(void);
+int is_num_valid(int, int, int);
+void calculate_possible_numbers(int, int, int);
+int solve(int, int);
+int is_board_valid(void);
+void print_possible_numbers(int, int);
+void print_possible_numbers_all(void);
+void print_board(void);
 
 int main(int argc, char** argv) {
     struct timespec time;
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
 }
 
-void init_board() {
+void init_board(void) {
     int i;
     board = (int**) malloc(sizeof(int**) * size);
     for (i = 0; i < size; i++) {
@@ -147,7 +147,7 @@ void parse_file(const char* path) {
     fclose(fp);
 }
 
-void init_possible_numbers() {
+void init_possible_numbers(void) {
     int i, j, k;
     possible_numbers = (int***) malloc(sizeof(int***) * size);
     for (i = 0; i < size; i++) {
@@ -169,7 +169,7 @@ void init_possible_numbers() {
     }
 }
 
-void destroy_board() {
+void destroy_board(void) {
     int i;
     for (i = 0; i < size; i++) {
         free(board[i]);
@@ -178,7 +178,7 @@ void destroy_board() {
     free(board);
 }
 
-void destroy_possible_numbers() {
+void destroy_possible_numbers(void) {
     int i, j;
 
     for (i = 0; i < size; i++) {
@@ -272,7 +272,7 @@ int solve(int x, int y) {
     return FALSE;
 }
 
-int is_board_valid() {
+int is_board_valid(void) {
     int i, j, num, result;
     
     for (i = 0; i < size; i++) {
@@ -301,7 +301,7 @@ void print_possible_numbers(int x, int y) {
     printf("\n");
 }
 
-void print_possible_numbers_all() {
+void print_possible_numbers_all(void) {
     int i, j;
 
     for (i = 0; i < size; i++) {
@@ -311,7 +311,7 @@ void print_possible_numbers_all() {
     }
 }
 
-void print_board() {
+void print_board(void) {
     int i, j;
 
     printf("+");
