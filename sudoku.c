@@ -9,17 +9,17 @@
 #define TRUE 1
 #define FALSE 0
 
-struct cell_num_pos {
+typedef struct cell_num_pos {
     int x;
     int y;
     int num;
     struct cell_num_pos *next;
-};
+} CellNumPos;
 
 typedef struct stack {
     int index;
     int size;
-    struct cell_num_pos *data;
+    CellNumPos *data;
 } Stack;
 
 static int **board;
@@ -50,7 +50,7 @@ void print_board(void);
 
 void init_stack(Stack *stack, int size);
 void push_stack_cell_num_pos(Stack *stack, int x, int y, int num);
-struct cell_num_pos * pop_stack(Stack *stack);
+CellNumPos * pop_stack(Stack *stack);
 void destroy_stack(Stack *stack);
 
 int main(int argc, char **argv) {
@@ -347,7 +347,7 @@ int solve_iterative(void) {
     int start_num;
     int solution_found;
     int x, y, k;
-    struct cell_num_pos *top;
+    CellNumPos *top;
     int result;
 
     init_stack(&stack, size * size);
@@ -480,13 +480,13 @@ void print_board(void) {
 }
 
 void init_stack(Stack *stack, int size) {
-    stack->data = (struct cell_num_pos*) malloc(sizeof(struct cell_num_pos) * size);
+    stack->data = (CellNumPos*) malloc(sizeof(CellNumPos) * size);
     stack->size = size;
 }
 
 void push_stack_cell_num_pos(Stack *stack, int x, int y, int num) {
     if (stack->index < stack->size - 1) {
-        struct cell_num_pos c = stack->data[++(stack->index)];
+        CellNumPos c = stack->data[++(stack->index)];
         c.x = x;
         c.y = y;
         c.num = num;
@@ -494,7 +494,7 @@ void push_stack_cell_num_pos(Stack *stack, int x, int y, int num) {
     }
 }
 
-struct cell_num_pos * pop_stack(Stack *stack) {
+CellNumPos * pop_stack(Stack *stack) {
     if (stack->index >= 0) {
         return &(stack->data[(stack->index)--]);
     } else {
