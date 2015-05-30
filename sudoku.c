@@ -40,6 +40,7 @@ void calculate_possible_numbers(int, int, int);
 void calculate_possible_numbers_all(void);
 int solve(int, int);
 int solve_iterative(void);
+void run_solver(int);
 int is_board_valid(void);
 void print_possible_numbers(int, int);
 void print_possible_numbers_all(void);
@@ -50,8 +51,6 @@ struct cell_num_pos * pop_stack(Stack *);
 void destroy_stack(Stack *);
 
 int main(int argc, char **argv) {
-    struct timespec time;
-    double beforeTime, afterTime;
     const char* path;
 
     if (argc <= 1) {
@@ -73,13 +72,38 @@ int main(int argc, char **argv) {
 #if DEBUG
     sleep_time.tv_nsec = 500000;
 #endif
+
+    run_solver(1);
+    parse_file(path);
+    run_solver(0);
+
+    print_board();
+
+    printf("Cleaning up...\n");
     
-    printf("Solving...\n");
+    destroy_board();
+    destroy_possible_numbers();
+
+    printf("Bye!\n");
+    
+    return EXIT_SUCCESS;
+}
+
+void run_solver(int recur) {
+    struct timespec time;
+    double beforeTime, afterTime;
+    
+    printf("Solving using %s solver...\n", recur ? "recursive" : "iterative");
     clock_gettime(CLOCK_REALTIME, &time);
     beforeTime = time.tv_sec + (time.tv_nsec / 1000000000.0);
 
-    // int result = solve(0, 0);
-    int result = solve_iterative();
+    int result;
+
+    if (recur) {
+        result = solve(0, 0);
+    } else {
+        result = solve_iterative();
+    }
     
     clock_gettime(CLOCK_REALTIME, &time);
     afterTime = time.tv_sec + (time.tv_nsec / 1000000000.0);
@@ -100,17 +124,7 @@ int main(int argc, char **argv) {
         printf("Board is NOT valid.\n");
     }
 
-    print_board();
-
     printf("Time taken: %.6f seconds\n", (afterTime - beforeTime));
-    printf("Cleaning up...\n");
-    
-    destroy_board();
-    destroy_possible_numbers();
-
-    printf("Bye!\n");
-    
-    return EXIT_SUCCESS;
 }
 
 void init_board(void) {
@@ -135,7 +149,9 @@ void parse_file(const char *path) {
     cube_size = (int) c - '0';
     size = cube_size * cube_size;
 
-    init_board();
+    if (!board) {
+        init_board();
+    }
 
     fgets(buff, BUFF_SIZE, fp); // read the first line
     
@@ -318,9 +334,12 @@ int solve_iterative(void) {
     int start_num;
     int solution_found;
     int x, y, k;
-
+    struct cell_num_pos *top;
+    int result;
+    
     x = y = 0;
     start_num = 1;
+    result = FALSE;
     
     while (y < size) {
         while (x < size) {
@@ -339,45 +358,41 @@ int solve_iterative(void) {
 
                 if (solution_found) {
                     start_num = 1;
-                    x++;
-                    if (x >= size) {
-                        x = 0;
-                        y++;
-                        if (y >= size) {
-                            destroy_stack(&stack);
-                            return TRUE;
-                        }
-                    }
                 } else {
                     if (!stack.top) {
                         destroy_stack(&stack);
-                        return TRUE;
+                        result = FALSE;
+                        goto end;
                     } else {
-                        struct cell_num_pos *top = pop_stack(&stack);
+                        top = pop_stack(&stack);
                         x = top->x;
                         y = top->y;
                         start_num = top->num + 1;
-
                         free(top);
+
                         board[x][y] = 0;
                     }
+
+                    continue;
                 }
-            } else {
-                x++;
-                if (x >= size) {
-                    x = 0;
-                    y++;
-                    if (y >= size) {
-                        destroy_stack(&stack);
-                        return TRUE;
-                    }
+            }
+            
+            x++;
+            if (x >= size) {
+                x = 0;
+                y++;
+                if (y >= size) {
+                    destroy_stack(&stack);
+                    result = TRUE;
+                    goto end;
                 }
             }
         }
     }
 
+ end:
     destroy_stack(&stack);
-    return FALSE;
+    return result;
 }
 
 int is_board_valid(void) {
