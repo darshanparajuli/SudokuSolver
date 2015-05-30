@@ -9,29 +9,47 @@
 #define TRUE 1
 #define FALSE 0
 
-int** board;
-int*** possible_numbers;
-int size;
-int cube_size;
+struct cell_num_pos {
+    int x;
+    int y;
+    int num;
+    struct cell_num_pos *next;
+};
+
+typedef struct stack {
+    struct cell_num_pos *top;
+} Stack;
+
+static int **board;
+static int ***possible_numbers;
+static int size;
+static int cube_size;
 
 #if DEBUG
-struct timespec sleep_time;
+static struct timespec sleep_time;
+static int is_num_valid_counter = 0;
 #endif
 
 void init_board(void);
-void parse_file(const char*);
+void parse_file(const char *);
 void init_possible_numbers(void);
 void destroy_board(void);
 void destroy_possible_numbers(void);
 int is_num_valid(int, int, int);
 void calculate_possible_numbers(int, int, int);
+void calculate_possible_numbers_all(void);
 int solve(int, int);
+int solve_iterative(void);
 int is_board_valid(void);
 void print_possible_numbers(int, int);
 void print_possible_numbers_all(void);
 void print_board(void);
 
-int main(int argc, char** argv) {
+void push_stack_cell_num_pos(Stack *, int, int, int);
+struct cell_num_pos * pop_stack(Stack *);
+void destroy_stack(Stack *);
+
+int main(int argc, char **argv) {
     struct timespec time;
     double beforeTime, afterTime;
     const char* path;
@@ -50,7 +68,8 @@ int main(int argc, char** argv) {
     print_board();
 
     init_possible_numbers();
-
+    calculate_possible_numbers_all();
+    
 #if DEBUG
     sleep_time.tv_nsec = 500000;
 #endif
@@ -59,11 +78,16 @@ int main(int argc, char** argv) {
     clock_gettime(CLOCK_REALTIME, &time);
     beforeTime = time.tv_sec + (time.tv_nsec / 1000000000.0);
 
-    int result = solve(0, 0);
-
+    // int result = solve(0, 0);
+    int result = solve_iterative();
+    
     clock_gettime(CLOCK_REALTIME, &time);
     afterTime = time.tv_sec + (time.tv_nsec / 1000000000.0);
 
+#if DEBUG
+    printf("is_num_valid calls: %d\n", is_num_valid_counter);
+#endif
+    
     if (result) {
         printf("Solved! ");
     } else {
@@ -91,14 +115,14 @@ int main(int argc, char** argv) {
 
 void init_board(void) {
     int i;
-    board = (int**) malloc(sizeof(int**) * size);
+    board = (int **) malloc(sizeof(int *) * size);
     for (i = 0; i < size; i++) {
-        board[i] = (int*) malloc(sizeof(int*) * size);
+        board[i] = (int *) malloc(sizeof(int) * size);
         memset(board[i], 0, sizeof(int) * size);
     }
 }
 
-void parse_file(const char* path) {
+void parse_file(const char *path) {
     FILE *fp;
     char c;
     const int BUFF_SIZE = 256;
@@ -149,21 +173,13 @@ void parse_file(const char* path) {
 
 void init_possible_numbers(void) {
     int i, j, k;
-    possible_numbers = (int***) malloc(sizeof(int***) * size);
+    possible_numbers = (int ***) malloc(sizeof(int **) * size);
     for (i = 0; i < size; i++) {
-        possible_numbers[i] = (int**) malloc(sizeof(int**) * size);
+        possible_numbers[i] = (int **) malloc(sizeof(int *) * size);
         for (j = 0; j < size; j++) {
-            possible_numbers[i][j] = (int*) malloc(sizeof(int*) * size);
+            possible_numbers[i][j] = (int *) malloc(sizeof(int) * size);
             for (k = 0; k < size; k++) {
                 possible_numbers[i][j][k] = TRUE;
-            }
-        }
-    }
-
-    for (i = 0; i < size; i++) {
-        for (j = 0; j < size; j++) {
-            if (board[i][j]) {
-                calculate_possible_numbers(board[i][j] - 1, i, j);
             }
         }
     }
@@ -236,8 +252,28 @@ void calculate_possible_numbers(int num_index, int x, int y) {
     }
 
     for (i = k; i < cube_size + k; i++) {
+        if (i == x) {
+            continue;
+        }
+        
         for (j = l; j < cube_size + l; j++) {
+            if (j == y) {
+                continue;
+            }
+            
             possible_numbers[i][j][num_index] = FALSE;
+        }
+    }
+}
+
+void calculate_possible_numbers_all(void) {
+    int i, j;
+
+    for (i = 0; i < size; i++) {
+        for (j = 0; j < size; j++) {
+            if (board[i][j]) {
+                calculate_possible_numbers(board[i][j] - 1, i, j);
+            }
         }
     }
 }
@@ -257,10 +293,15 @@ int solve(int x, int y) {
 
     int k;
     for (k = 1; k <= size; k++) {       
-        if (possible_numbers[x][y][k - 1]) {       
+        if (possible_numbers[x][y][k - 1]) {
+#if DEBUG
+            is_num_valid_counter++;
+#endif
             if (is_num_valid(k, x, y)) {
                 board[x][y] = k;
+#if DEBUG
                 // print_board();
+#endif
                 if (solve(x + 1, y)) {
                     return TRUE;
                 }
@@ -269,6 +310,73 @@ int solve(int x, int y) {
     }
 
     board[x][y] = 0;
+    return FALSE;
+}
+
+int solve_iterative(void) {
+    Stack stack = {};
+    int start_num;
+    int solution_found;
+    int x, y, k;
+
+    x = y = 0;
+    start_num = 1;
+    
+    while (y < size) {
+        while (x < size) {
+            if (!board[x][y]) {
+                solution_found = FALSE;
+                for (k = start_num; k <= size; k++) {
+                    if (possible_numbers[x][y][k - 1]) {
+                        if (is_num_valid(k, x, y)) {
+                            board[x][y] = k;
+                            push_stack_cell_num_pos(&stack, x, y, k);
+                            solution_found = TRUE;
+                            break;
+                        }   
+                    }
+                }
+
+                if (solution_found) {
+                    start_num = 1;
+                    x++;
+                    if (x >= size) {
+                        x = 0;
+                        y++;
+                        if (y >= size) {
+                            destroy_stack(&stack);
+                            return TRUE;
+                        }
+                    }
+                } else {
+                    if (!stack.top) {
+                        destroy_stack(&stack);
+                        return TRUE;
+                    } else {
+                        struct cell_num_pos *top = pop_stack(&stack);
+                        x = top->x;
+                        y = top->y;
+                        start_num = top->num + 1;
+
+                        free(top);
+                        board[x][y] = 0;
+                    }
+                }
+            } else {
+                x++;
+                if (x >= size) {
+                    x = 0;
+                    y++;
+                    if (y >= size) {
+                        destroy_stack(&stack);
+                        return TRUE;
+                    }
+                }
+            }
+        }
+    }
+
+    destroy_stack(&stack);
     return FALSE;
 }
 
@@ -341,5 +449,34 @@ void print_board(void) {
             }
             printf("\n");
         }
+    }
+}
+
+void push_stack_cell_num_pos(Stack *stack, int x, int y, int num) {
+    struct cell_num_pos *c = (struct cell_num_pos *) malloc(sizeof(struct cell_num_pos));
+    c->x = x;
+    c->y = y;
+    c->num = num;
+    c->next = stack->top;
+    stack->top = c;
+}
+
+struct cell_num_pos * pop_stack(Stack *stack) {
+    if (stack->top) {
+        struct cell_num_pos *top = stack->top;
+        stack->top = stack->top->next;
+        return top;
+    } else {
+        return 0;
+    }
+}
+
+void destroy_stack(Stack *stack) {
+    struct cell_num_pos *next;
+
+    while (stack->top) {
+        next = stack->top->next;
+        free(stack->top);
+        stack->top = next;
     }
 }
