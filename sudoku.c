@@ -17,7 +17,9 @@ struct cell_num_pos {
 };
 
 typedef struct stack {
-    struct cell_num_pos *top;
+    int index;
+    int size;
+    struct cell_num_pos *data;
 } Stack;
 
 static int **board;
@@ -31,24 +33,25 @@ static int is_num_valid_counter = 0;
 #endif
 
 void init_board(void);
-void parse_file(const char *);
+int parse_file(const char *path);
 void init_possible_numbers(void);
 void destroy_board(void);
 void destroy_possible_numbers(void);
-int is_num_valid(int, int, int);
-void calculate_possible_numbers(int, int, int);
+int is_num_valid(int num, int x, int y);
+void calculate_possible_numbers(int num_index, int x, int y);
 void calculate_possible_numbers_all(void);
-int solve(int, int);
+int solve(int x, int y);
 int solve_iterative(void);
-void run_solver(int);
+void run_solver(int recurr);
 int is_board_valid(void);
-void print_possible_numbers(int, int);
+void print_possible_numbers(int x, int y);
 void print_possible_numbers_all(void);
 void print_board(void);
 
-void push_stack_cell_num_pos(Stack *, int, int, int);
-struct cell_num_pos * pop_stack(Stack *);
-void destroy_stack(Stack *);
+void init_stack(Stack *stack, int size);
+void push_stack_cell_num_pos(Stack *stack, int x, int y, int num);
+struct cell_num_pos * pop_stack(Stack *stack);
+void destroy_stack(Stack *stack);
 
 int main(int argc, char **argv) {
     const char* path;
@@ -61,7 +64,10 @@ int main(int argc, char **argv) {
     path = argv[1];
     
     printf("Initializing...\n");
-    parse_file(path);
+
+    if (parse_file(path) == FALSE) {
+        return EXIT_FAILURE;
+    }
 
     printf("Board: \n");
     print_board();
@@ -89,17 +95,17 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-void run_solver(int recur) {
+void run_solver(int recurr) {
     struct timespec time;
     double beforeTime, afterTime;
     
-    printf("Solving using %s solver...\n", recur ? "recursive" : "iterative");
+    printf("Solving using %s solver...\n", recurr ? "recursive" : "iterative");
     clock_gettime(CLOCK_REALTIME, &time);
     beforeTime = time.tv_sec + (time.tv_nsec / 1000000000.0);
 
     int result;
 
-    if (recur) {
+    if (recurr) {
         result = solve(0, 0);
     } else {
         result = solve_iterative();
@@ -136,7 +142,7 @@ void init_board(void) {
     }
 }
 
-void parse_file(const char *path) {
+int parse_file(const char *path) {
     FILE *fp;
     char c;
     const int BUFF_SIZE = 256;
@@ -145,6 +151,11 @@ void parse_file(const char *path) {
 
     fp = fopen(path, "r");
 
+    if (fp == NULL) {
+        printf("Cannot open file %s\n", path);
+        return FALSE;
+    }
+    
     c = fgetc(fp);
     cube_size = (int) c - '0';
     size = cube_size * cube_size;
@@ -185,6 +196,8 @@ void parse_file(const char *path) {
     }
 
     fclose(fp);
+
+    return TRUE;
 }
 
 void init_possible_numbers(void) {
@@ -336,6 +349,8 @@ int solve_iterative(void) {
     int x, y, k;
     struct cell_num_pos *top;
     int result;
+
+    init_stack(&stack, size * size);
     
     x = y = 0;
     start_num = 1;
@@ -359,8 +374,7 @@ int solve_iterative(void) {
                 if (solution_found) {
                     start_num = 1;
                 } else {
-                    if (!stack.top) {
-                        destroy_stack(&stack);
+                    if (stack.index < 0) {
                         result = FALSE;
                         goto end;
                     } else {
@@ -368,7 +382,6 @@ int solve_iterative(void) {
                         x = top->x;
                         y = top->y;
                         start_num = top->num + 1;
-                        free(top);
 
                         board[x][y] = 0;
                     }
@@ -381,8 +394,7 @@ int solve_iterative(void) {
             if (x >= size) {
                 x = 0;
                 y++;
-                if (y >= size) {
-                    destroy_stack(&stack);
+                if (y >= size) {;
                     result = TRUE;
                     goto end;
                 }
@@ -467,31 +479,29 @@ void print_board(void) {
     }
 }
 
+void init_stack(Stack *stack, int size) {
+    stack->data = (struct cell_num_pos*) malloc(sizeof(struct cell_num_pos) * size);
+    stack->size = size;
+}
+
 void push_stack_cell_num_pos(Stack *stack, int x, int y, int num) {
-    struct cell_num_pos *c = (struct cell_num_pos *) malloc(sizeof(struct cell_num_pos));
-    c->x = x;
-    c->y = y;
-    c->num = num;
-    c->next = stack->top;
-    stack->top = c;
+    if (stack->index < stack->size - 1) {
+        struct cell_num_pos c = stack->data[++(stack->index)];
+        c.x = x;
+        c.y = y;
+        c.num = num;
+        stack->data[stack->index] = c;
+    }
 }
 
 struct cell_num_pos * pop_stack(Stack *stack) {
-    if (stack->top) {
-        struct cell_num_pos *top = stack->top;
-        stack->top = stack->top->next;
-        return top;
+    if (stack->index >= 0) {
+        return &(stack->data[(stack->index)--]);
     } else {
         return 0;
     }
 }
 
 void destroy_stack(Stack *stack) {
-    struct cell_num_pos *next;
-
-    while (stack->top) {
-        next = stack->top->next;
-        free(stack->top);
-        stack->top = next;
-    }
+    free(stack->data);
 }
