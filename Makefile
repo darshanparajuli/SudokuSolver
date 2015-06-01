@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -O2 -pipe
-SOURCES=sudoku.c
+SOURCES=main.c sudoku.h sudoku.c
 EXECUTABLE=solver
 
 $(EXECUTABLE): $(SOURCES)

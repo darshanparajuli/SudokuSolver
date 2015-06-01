@@ -1,137 +1,9 @@
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-
-#define DEBUG 0
-
-#define TRUE 1
-#define FALSE 0
-
-typedef struct cell_num_pos {
-    int x;
-    int y;
-    int num;
-    struct cell_num_pos *next;
-} CellNumPos;
-
-typedef struct stack {
-    int index;
-    int size;
-    CellNumPos *data;
-} Stack;
-
-static int **board;
-static int ***possible_numbers;
-static int size;
-static int cube_size;
+#include "sudoku.h"
 
 #if DEBUG
 static struct timespec sleep_time;
 static int is_num_valid_counter = 0;
 #endif
-
-void init_board(void);
-int parse_file(const char *path);
-void init_possible_numbers(void);
-void destroy_board(void);
-void destroy_possible_numbers(void);
-int is_num_valid(int num, int x, int y);
-void calculate_possible_numbers(int num_index, int x, int y);
-void calculate_possible_numbers_all(void);
-int solve(int x, int y);
-int solve_iterative(void);
-void run_solver(int recurr);
-int is_board_valid(void);
-void print_possible_numbers(int x, int y);
-void print_possible_numbers_all(void);
-void print_board(void);
-
-void init_stack(Stack *stack, int size);
-void push_stack_cell_num_pos(Stack *stack, int x, int y, int num);
-CellNumPos * pop_stack(Stack *stack);
-void destroy_stack(Stack *stack);
-
-int main(int argc, char **argv) {
-    const char* path;
-
-    if (argc <= 1) {
-        printf("Error: missing path as argument!\n");
-        return EXIT_FAILURE;
-    }
-
-    path = argv[1];
-    
-    printf("Initializing...\n");
-
-    if (parse_file(path) == FALSE) {
-        return EXIT_FAILURE;
-    }
-
-    printf("Board: \n");
-    print_board();
-
-    init_possible_numbers();
-    calculate_possible_numbers_all();
-    
-#if DEBUG
-    sleep_time.tv_nsec = 500000;
-#endif
-
-    run_solver(1);
-    parse_file(path);
-    run_solver(0);
-
-    print_board();
-
-    printf("Cleaning up...\n");
-    
-    destroy_board();
-    destroy_possible_numbers();
-
-    printf("Bye!\n");
-    
-    return EXIT_SUCCESS;
-}
-
-void run_solver(int recurr) {
-    struct timespec time;
-    double beforeTime, afterTime;
-    
-    printf("Solving using %s solver...\n", recurr ? "recursive" : "iterative");
-    clock_gettime(CLOCK_REALTIME, &time);
-    beforeTime = time.tv_sec + (time.tv_nsec / 1000000000.0);
-
-    int result;
-
-    if (recurr) {
-        result = solve(0, 0);
-    } else {
-        result = solve_iterative();
-    }
-    
-    clock_gettime(CLOCK_REALTIME, &time);
-    afterTime = time.tv_sec + (time.tv_nsec / 1000000000.0);
-
-#if DEBUG
-    printf("is_num_valid calls: %d\n", is_num_valid_counter);
-#endif
-    
-    if (result) {
-        printf("Solved! ");
-    } else {
-        printf("Couldn't solve. ");
-    }
-
-    if (is_board_valid()) {
-        printf("Board is valid.\n");
-    } else {
-        printf("Board is NOT valid.\n");
-    }
-
-    printf("Time taken: %.6f seconds\n", (afterTime - beforeTime));
-}
 
 void init_board(void) {
     int i;
@@ -362,6 +234,9 @@ int solve_iterative(void) {
                 solution_found = FALSE;
                 for (k = start_num; k <= size; k++) {
                     if (possible_numbers[x][y][k - 1]) {
+#if DEBUG
+                        is_num_valid_counter++;
+#endif
                         if (is_num_valid(k, x, y)) {
                             board[x][y] = k;
                             push_stack_cell_num_pos(&stack, x, y, k);
@@ -486,15 +361,14 @@ void init_stack(Stack *stack, int size) {
 
 void push_stack_cell_num_pos(Stack *stack, int x, int y, int num) {
     if (stack->index < stack->size - 1) {
-        CellNumPos c = stack->data[++(stack->index)];
-        c.x = x;
-        c.y = y;
-        c.num = num;
-        stack->data[stack->index] = c;
+        CellNumPos *c = &stack->data[++(stack->index)];
+        c->x = x;
+        c->y = y;
+        c->num = num;
     }
 }
 
-CellNumPos * pop_stack(Stack *stack) {
+CellNumPos *pop_stack(Stack *stack) {
     if (stack->index >= 0) {
         return &(stack->data[(stack->index)--]);
     } else {
